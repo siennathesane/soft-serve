@@ -33,6 +33,10 @@ type Refs struct {
 	refPrefix string
 	spinner   spinner.Model
 	isLoading bool
+
+	// MR creation
+	showMRForm bool
+	mrForm     *MRForm
 }
 
 // NewRefs creates a new Refs component.
@@ -80,23 +84,47 @@ func (r *Refs) SetSize(width, height int) {
 
 // ShortHelp implements help.KeyMap.
 func (r *Refs) ShortHelp() []key.Binding {
+	if r.showMRForm {
+		return []key.Binding{}
+	}
+
 	copyKey := r.common.KeyMap.Copy
 	copyKey.SetHelp("c", "copy ref")
+	newMRKey := key.NewBinding(
+		key.WithKeys("n"),
+		key.WithHelp("n", "new MR from branch"),
+	)
 	k := r.selector.KeyMap
-	return []key.Binding{
+	bindings := []key.Binding{
 		r.common.KeyMap.SelectItem,
 		k.CursorUp,
 		k.CursorDown,
 		copyKey,
 	}
+
+	// Only show "new MR" key for branches (not tags)
+	if r.refPrefix == git.RefsHeads {
+		bindings = append(bindings, newMRKey)
+	}
+
+	return bindings
 }
 
 // FullHelp implements help.KeyMap.
 func (r *Refs) FullHelp() [][]key.Binding {
+	if r.showMRForm {
+		return [][]key.Binding{}
+	}
+
 	copyKey := r.common.KeyMap.Copy
 	copyKey.SetHelp("c", "copy ref")
+	newMRKey := key.NewBinding(
+		key.WithKeys("n"),
+		key.WithHelp("n", "new MR from branch"),
+	)
 	k := r.selector.KeyMap
-	return [][]key.Binding{
+
+	bindings := [][]key.Binding{
 		{r.common.KeyMap.SelectItem},
 		{
 			k.CursorUp,
@@ -110,6 +138,13 @@ func (r *Refs) FullHelp() [][]key.Binding {
 			copyKey,
 		},
 	}
+
+	// Only show "new MR" key for branches (not tags)
+	if r.refPrefix == git.RefsHeads {
+		bindings = append(bindings, []key.Binding{newMRKey})
+	}
+
+	return bindings
 }
 
 // Init implements tea.Model.
@@ -152,11 +187,46 @@ func (r *Refs) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				switchTabCmd(&Files{}),
 			)
 		}
+	case MRCreatedMsg:
+		// MR was created, close the form and optionally navigate to MRs tab
+		r.showMRForm = false
+		r.mrForm = nil
+
 	case tea.KeyPressMsg:
-		switch {
-		case key.Matches(msg, r.common.KeyMap.SelectItem):
-			cmds = append(cmds, r.selector.SelectItemCmd)
+		if r.showMRForm {
+			// Delegate to form
+			var m tea.Model
+			var cmd tea.Cmd
+			m, cmd = r.mrForm.Update(msg)
+			r.mrForm = m.(*MRForm)
+			if cmd != nil {
+				cmds = append(cmds, cmd)
+			}
+
+			// Check if user pressed escape to cancel
+			if key.Matches(msg, r.common.KeyMap.Back) && r.mrForm.step == stepSelectTarget {
+				r.showMRForm = false
+				r.mrForm = nil
+			}
+		} else {
+			switch {
+			case key.Matches(msg, r.common.KeyMap.SelectItem):
+				cmds = append(cmds, r.selector.SelectItemCmd)
+
+			case msg.String() == "n" && r.refPrefix == git.RefsHeads:
+				// Create MR from selected branch
+				item := r.selector.SelectedItem()
+				if item != nil {
+					if refItem, ok := item.(RefItem); ok {
+						r.showMRForm = true
+						r.mrForm = NewMRForm(r.common, refItem.Short())
+						r.mrForm.repo = r.repo
+						cmds = append(cmds, r.mrForm.Init())
+					}
+				}
+			}
 		}
+
 	case EmptyRepoMsg:
 		r.ref = nil
 		cmds = append(cmds, r.setItems([]selector.IdentifiableItem{}))
@@ -169,16 +239,34 @@ func (r *Refs) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			r.spinner = s
 		}
 	}
-	m, cmd := r.selector.Update(msg)
-	r.selector = m.(*selector.Selector)
-	if cmd != nil {
-		cmds = append(cmds, cmd)
+
+	// Update form if showing
+	if r.showMRForm && r.mrForm != nil {
+		var m tea.Model
+		var cmd tea.Cmd
+		m, cmd = r.mrForm.Update(msg)
+		r.mrForm = m.(*MRForm)
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+	} else {
+		// Update selector
+		m, cmd := r.selector.Update(msg)
+		r.selector = m.(*selector.Selector)
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
 	}
+
 	return r, tea.Batch(cmds...)
 }
 
 // View implements tea.Model.
 func (r *Refs) View() string {
+	if r.showMRForm && r.mrForm != nil {
+		return r.mrForm.View()
+	}
+
 	if r.isLoading {
 		return renderLoading(r.common, r.spinner)
 	}
