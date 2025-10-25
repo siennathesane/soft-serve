@@ -143,6 +143,35 @@ type Styles struct {
 		Selector lipgloss.Style
 	}
 
+	MR struct {
+		Normal struct {
+			Base          lipgloss.Style
+			ItemTitle     lipgloss.Style
+			ItemNumber    lipgloss.Style
+			ItemBranches  lipgloss.Style
+			ItemAuthor    lipgloss.Style
+			ItemTime      lipgloss.Style
+			ItemStateOpen lipgloss.Style
+			ItemStateMerged lipgloss.Style
+			ItemStateClosed lipgloss.Style
+		}
+		Active struct {
+			Base          lipgloss.Style
+			ItemTitle     lipgloss.Style
+			ItemNumber    lipgloss.Style
+			ItemBranches  lipgloss.Style
+			ItemAuthor    lipgloss.Style
+			ItemTime      lipgloss.Style
+			ItemStateOpen lipgloss.Style
+			ItemStateMerged lipgloss.Style
+			ItemStateClosed lipgloss.Style
+		}
+		ItemSelector    lipgloss.Style
+		DetailTitle     lipgloss.Style
+		DetailLabel     lipgloss.Style
+		DetailSeparator lipgloss.Style
+	}
+
 	Spinner          lipgloss.Style
 	SpinnerContainer lipgloss.Style
 
@@ -522,6 +551,80 @@ func DefaultStyles() *Styles {
 	s.Stash.Selector = lipgloss.NewStyle().
 		Width(1).
 		Foreground(selectorColor)
+
+	// Merge Request styles
+	s.MR.ItemSelector = lipgloss.NewStyle().
+		Foreground(selectorColor).
+		SetString("> ")
+
+	s.MR.Normal.Base = lipgloss.NewStyle()
+
+	s.MR.Active.Base = lipgloss.NewStyle()
+
+	s.MR.Normal.ItemTitle = lipgloss.NewStyle()
+
+	s.MR.Active.ItemTitle = lipgloss.NewStyle().
+		Bold(true).
+		Foreground(highlightColor)
+
+	s.MR.Normal.ItemNumber = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("243"))
+
+	s.MR.Active.ItemNumber = lipgloss.NewStyle().
+		Foreground(highlightColorDim)
+
+	s.MR.Normal.ItemBranches = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("39"))
+
+	s.MR.Active.ItemBranches = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("111"))
+
+	s.MR.Normal.ItemAuthor = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("246"))
+
+	s.MR.Active.ItemAuthor = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("249"))
+
+	s.MR.Normal.ItemTime = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("243"))
+
+	s.MR.Active.ItemTime = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("246"))
+
+	// State badges
+	s.MR.Normal.ItemStateOpen = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("42")) // green
+
+	s.MR.Active.ItemStateOpen = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("46")).
+		Bold(true)
+
+	s.MR.Normal.ItemStateMerged = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("141")) // purple
+
+	s.MR.Active.ItemStateMerged = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("177")).
+		Bold(true)
+
+	s.MR.Normal.ItemStateClosed = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("203")) // red
+
+	s.MR.Active.ItemStateClosed = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("210")).
+		Bold(true)
+
+	// Detail view styles
+	s.MR.DetailTitle = lipgloss.NewStyle().
+		Foreground(highlightColor).
+		Bold(true).
+		Underline(true)
+
+	s.MR.DetailLabel = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("111")).
+		Bold(true)
+
+	s.MR.DetailSeparator = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("237"))
 
 	return s
 }
