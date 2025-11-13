@@ -9,7 +9,6 @@ import (
 	"github.com/charmbracelet/bubbles/v2/key"
 	"github.com/charmbracelet/bubbles/v2/spinner"
 	tea "github.com/charmbracelet/bubbletea/v2"
-	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/db/models"
@@ -456,17 +455,17 @@ func (mr *MergeRequests) buildMRDetails(ctx context.Context, m models.MergeReque
 
 // getDiff gets the diff between two branches.
 func (mr *MergeRequests) getDiff(repo *git.Repository, source, target string) (string, error) {
-	// Get diff between target and source branches
-	diff, err := repo.Diff(
-		fmt.Sprintf("refs/heads/%s", target),
-		fmt.Sprintf("refs/heads/%s", source),
-		git.DiffMaxFiles,
-		git.DiffMaxFileLines,
-		git.DiffMaxLineChars,
-	)
+	// Get commit for source branch
+	commit, err := repo.CatFileCommit(fmt.Sprintf("refs/heads/%s", source))
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get source commit: %w", err)
 	}
 
-	return diff.String(), nil
+	// Get diff for the commit
+	diff, err := repo.Diff(commit)
+	if err != nil {
+		return "", fmt.Errorf("failed to get diff: %w", err)
+	}
+
+	return diff.Patch(), nil
 }

@@ -5,12 +5,12 @@ import (
 	"io"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/v2/key"
 	"github.com/charmbracelet/bubbles/v2/list"
 	"github.com/charmbracelet/bubbles/v2/textinput"
 	tea "github.com/charmbracelet/bubbletea/v2"
-	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
@@ -72,14 +72,14 @@ func NewMRForm(c common.Common, sourceBranch string) *MRForm {
 	titleInput.Placeholder = "Enter merge request title"
 	titleInput.Focus()
 	titleInput.CharLimit = 200
-	titleInput.Width = 70
+	titleInput.SetWidth(70)
 	form.titleInput = titleInput
 
 	// Setup description input
 	descInput := textinput.New()
 	descInput.Placeholder = "Enter description (optional)"
 	descInput.CharLimit = 2000
-	descInput.Width = 70
+	descInput.SetWidth(70)
 	form.descInput = descInput
 
 	return form
@@ -205,7 +205,7 @@ func (f *MRForm) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		f.createdMRID = msg.MRID
 		// Navigate to the new MR after a brief moment
 		return f, tea.Sequence(
-			tea.Tick(tea.Millisecond*500, func(time.Time) tea.Msg {
+			tea.Tick(time.Millisecond*500, func(time.Time) tea.Msg {
 				return SwitchTabMsg(nil) // This will be caught by parent to switch tabs
 			}),
 		)
@@ -336,7 +336,7 @@ func (f *MRForm) fetchBranchesCmd() tea.Cmd {
 		refItems := make([]RefItem, 0)
 		for _, ref := range refs {
 			if ref.IsBranch() {
-				commit, _ := r.ResolveRevision(ref.Name().String())
+				commit, _ := r.CatFileCommit(ref.ID)
 				refItems = append(refItems, RefItem{
 					Reference: ref,
 					Commit:    commit,
@@ -400,6 +400,16 @@ func (b branchSelectorItem) ID() string {
 
 // FilterValue implements list.Item.
 func (b branchSelectorItem) FilterValue() string {
+	return b.name
+}
+
+// Description implements list.DefaultItem.
+func (b branchSelectorItem) Description() string {
+	return ""
+}
+
+// Title implements list.DefaultItem.
+func (b branchSelectorItem) Title() string {
 	return b.name
 }
 
