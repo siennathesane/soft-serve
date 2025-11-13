@@ -40,3 +40,12 @@ type Issue struct {
 	CreatedAt   time.Time     `db:"created_at"`
 	UpdatedAt   time.Time     `db:"updated_at"`
 }
+
+// IssueDependency represents a dependency relationship between two issues.
+// The issue with ID IssueID depends on the issue with ID DependsOnID.
+type IssueDependency struct {
+	ID          int64     `db:"id"`
+	IssueID     int64     `db:"issue_id"`
+	DependsOnID int64     `db:"depends_on_id"`
+	CreatedAt   time.Time `db:"created_at"`
+}

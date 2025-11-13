@@ -397,5 +397,27 @@ func (i *Issues) buildIssueDetails(ctx context.Context, issue models.Issue) stri
 		sb.WriteString("\n")
 	}
 
+	// Dependencies
+	dependencies, err := be.GetIssueDependencies(ctx, i.repo.Name(), issue.ID)
+	if err == nil && len(dependencies) > 0 {
+		sb.WriteString("\n")
+		sb.WriteString(st.DetailLabel.Render("Depends on:"))
+		sb.WriteString("\n")
+		for _, dep := range dependencies {
+			sb.WriteString(fmt.Sprintf("  #%d - %s\n", dep.ID, dep.Title))
+		}
+	}
+
+	// Dependents (issues that depend on this one)
+	dependents, err := be.GetIssueDependents(ctx, i.repo.Name(), issue.ID)
+	if err == nil && len(dependents) > 0 {
+		sb.WriteString("\n")
+		sb.WriteString(st.DetailLabel.Render("Blocked by:"))
+		sb.WriteString("\n")
+		for _, dep := range dependents {
+			sb.WriteString(fmt.Sprintf("  #%d - %s\n", dep.ID, dep.Title))
+		}
+	}
+
 	return sb.String()
 }

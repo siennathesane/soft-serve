@@ -24,6 +24,8 @@ func issueCommand() *cobra.Command {
 		issueUpdateCommand(),
 		issueCloseCommand(),
 		issueReopenCommand(),
+		issueAddDependencyCommand(),
+		issueRemoveDependencyCommand(),
 	)
 
 	return cmd
@@ -139,6 +141,24 @@ func issueShowCommand() *cobra.Command {
 				cmd.Printf("Closed At: %s\n", issue.ClosedAt.Time.Format("2006-01-02 15:04:05"))
 			}
 
+			// Display dependencies
+			dependencies, err := be.GetIssueDependencies(ctx, repo, issueID)
+			if err == nil && len(dependencies) > 0 {
+				cmd.Printf("\nDepends on:\n")
+				for _, dep := range dependencies {
+					cmd.Printf("  #%d - %s\n", dep.ID, dep.Title)
+				}
+			}
+
+			// Display dependents
+			dependents, err := be.GetIssueDependents(ctx, repo, issueID)
+			if err == nil && len(dependents) > 0 {
+				cmd.Printf("\nBlocked by:\n")
+				for _, dep := range dependents {
+					cmd.Printf("  #%d - %s\n", dep.ID, dep.Title)
+				}
+			}
+
 			return nil
 		},
 	}
@@ -229,6 +249,74 @@ func issueReopenCommand() *cobra.Command {
 			}
 
 			cmd.Printf("Reopened issue #%d\n", issueID)
+			return nil
+		},
+	}
+
+	return cmd
+}
+
+func issueAddDependencyCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:               "add-dependency REPOSITORY ISSUE_ID DEPENDS_ON_ID",
+		Aliases:           []string{"add-dep"},
+		Short:             "Add a dependency to an issue",
+		Args:              cobra.ExactArgs(3),
+		PersistentPreRunE: checkIfReadableAndCollab,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			be := backend.FromContext(ctx)
+			repo := args[0]
+
+			issueID, err := strconv.ParseInt(args[1], 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid issue ID: %w", err)
+			}
+
+			dependsOnID, err := strconv.ParseInt(args[2], 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid depends on ID: %w", err)
+			}
+
+			if err := be.AddIssueDependency(ctx, repo, issueID, dependsOnID); err != nil {
+				return err
+			}
+
+			cmd.Printf("Added dependency: issue #%d now depends on issue #%d\n", issueID, dependsOnID)
+			return nil
+		},
+	}
+
+	return cmd
+}
+
+func issueRemoveDependencyCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:               "remove-dependency REPOSITORY ISSUE_ID DEPENDS_ON_ID",
+		Aliases:           []string{"remove-dep", "rm-dep"},
+		Short:             "Remove a dependency from an issue",
+		Args:              cobra.ExactArgs(3),
+		PersistentPreRunE: checkIfReadableAndCollab,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			be := backend.FromContext(ctx)
+			repo := args[0]
+
+			issueID, err := strconv.ParseInt(args[1], 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid issue ID: %w", err)
+			}
+
+			dependsOnID, err := strconv.ParseInt(args[2], 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid depends on ID: %w", err)
+			}
+
+			if err := be.RemoveIssueDependency(ctx, repo, issueID, dependsOnID); err != nil {
+				return err
+			}
+
+			cmd.Printf("Removed dependency: issue #%d no longer depends on issue #%d\n", issueID, dependsOnID)
 			return nil
 		},
 	}

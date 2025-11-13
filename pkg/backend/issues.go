@@ -143,3 +143,81 @@ func (d *Backend) ReopenIssue(ctx context.Context, repoName string, issueID int6
 
 	return nil
 }
+
+// AddIssueDependency creates a dependency relationship where issueID depends on dependsOnID.
+func (d *Backend) AddIssueDependency(ctx context.Context, repoName string, issueID int64, dependsOnID int64) error {
+	repoName = utils.SanitizeRepo(repoName)
+
+	r, err := d.Repository(ctx, repoName)
+	if err != nil {
+		return err
+	}
+
+	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
+		return d.store.AddIssueDependency(ctx, tx, r.ID(), issueID, dependsOnID)
+	}); err != nil {
+		return db.WrapError(err)
+	}
+
+	return nil
+}
+
+// RemoveIssueDependency removes a dependency relationship.
+func (d *Backend) RemoveIssueDependency(ctx context.Context, repoName string, issueID int64, dependsOnID int64) error {
+	repoName = utils.SanitizeRepo(repoName)
+
+	r, err := d.Repository(ctx, repoName)
+	if err != nil {
+		return err
+	}
+
+	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
+		return d.store.RemoveIssueDependency(ctx, tx, r.ID(), issueID, dependsOnID)
+	}); err != nil {
+		return db.WrapError(err)
+	}
+
+	return nil
+}
+
+// GetIssueDependencies returns all issues that the given issue depends on.
+func (d *Backend) GetIssueDependencies(ctx context.Context, repoName string, issueID int64) ([]models.Issue, error) {
+	repoName = utils.SanitizeRepo(repoName)
+
+	r, err := d.Repository(ctx, repoName)
+	if err != nil {
+		return nil, err
+	}
+
+	var dependencies []models.Issue
+	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
+		var err error
+		dependencies, err = d.store.GetIssueDependencies(ctx, tx, r.ID(), issueID)
+		return err
+	}); err != nil {
+		return nil, db.WrapError(err)
+	}
+
+	return dependencies, nil
+}
+
+// GetIssueDependents returns all issues that depend on the given issue.
+func (d *Backend) GetIssueDependents(ctx context.Context, repoName string, issueID int64) ([]models.Issue, error) {
+	repoName = utils.SanitizeRepo(repoName)
+
+	r, err := d.Repository(ctx, repoName)
+	if err != nil {
+		return nil, err
+	}
+
+	var dependents []models.Issue
+	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
+		var err error
+		dependents, err = d.store.GetIssueDependents(ctx, tx, r.ID(), issueID)
+		return err
+	}); err != nil {
+		return nil, db.WrapError(err)
+	}
+
+	return dependents, nil
+}
