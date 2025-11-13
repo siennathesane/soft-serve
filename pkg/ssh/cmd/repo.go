@@ -28,6 +28,7 @@ func RepoCommand() *cobra.Command {
 		hiddenCommand(),
 		importCommand(),
 		listCommand(),
+		mergeRequestCommand(),
 		mirrorCommand(),
 		privateCommand(),
 		projectName(),
