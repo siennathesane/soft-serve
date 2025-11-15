@@ -5,4 +5,4 @@ on:
 
 jobs:
   lint:
-    uses: siennathesane/meta/.github/workflows/lint.yml@main
+    uses: charmbracelet/meta/.github/workflows/lint.yml@main

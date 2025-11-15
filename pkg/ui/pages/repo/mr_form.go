@@ -445,7 +445,7 @@ func (d branchSelectorDelegate) Render(w io.Writer, m list.Model, index int, lis
 		style = s.Ref.Active.Item
 	}
 
-	fmt.Fprint(w, d.common.Zone.Mark(
+	_, _ = fmt.Fprint(w, d.common.Zone.Mark(
 		item.ID(),
 		selector+style.Render(item.name),
 	))
