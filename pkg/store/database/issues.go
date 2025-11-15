@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/charmbracelet/soft-serve/pkg/db"
 	"github.com/charmbracelet/soft-serve/pkg/db/models"
@@ -101,4 +102,104 @@ func (*issueStore) DeleteIssue(ctx context.Context, h db.Handler, repoID int64, 
 	`)
 	_, err := h.ExecContext(ctx, query, repoID, id)
 	return err
+}
+
+// AddIssueDependency implements store.IssueStore.
+func (*issueStore) AddIssueDependency(ctx context.Context, h db.Handler, repoID int64, issueID int64, dependsOnID int64) error {
+	// Verify both issues exist and belong to the same repository
+	query := h.Rebind(`
+		SELECT COUNT(*) FROM issues
+		WHERE repo_id = ? AND (id = ? OR id = ?)
+	`)
+	var count int
+	if err := h.GetContext(ctx, &count, query, repoID, issueID, dependsOnID); err != nil {
+		return err
+	}
+	if count != 2 {
+		return sql.ErrNoRows
+	}
+
+	// Insert the dependency
+	query = h.Rebind(`
+		INSERT INTO issue_dependencies (issue_id, depends_on_id)
+		VALUES (?, ?)
+	`)
+	_, err := h.ExecContext(ctx, query, issueID, dependsOnID)
+	return err
+}
+
+// RemoveIssueDependency implements store.IssueStore.
+func (*issueStore) RemoveIssueDependency(ctx context.Context, h db.Handler, repoID int64, issueID int64, dependsOnID int64) error {
+	// Verify the issue belongs to the repository
+	query := h.Rebind(`
+		SELECT COUNT(*) FROM issues
+		WHERE repo_id = ? AND id = ?
+	`)
+	var count int
+	if err := h.GetContext(ctx, &count, query, repoID, issueID); err != nil {
+		return err
+	}
+	if count == 0 {
+		return sql.ErrNoRows
+	}
+
+	// Delete the dependency
+	query = h.Rebind(`
+		DELETE FROM issue_dependencies
+		WHERE issue_id = ? AND depends_on_id = ?
+	`)
+	_, err := h.ExecContext(ctx, query, issueID, dependsOnID)
+	return err
+}
+
+// GetIssueDependencies implements store.IssueStore.
+func (*issueStore) GetIssueDependencies(ctx context.Context, h db.Handler, repoID int64, issueID int64) ([]models.Issue, error) {
+	var issues []models.Issue
+	query := h.Rebind(`
+		SELECT i.* FROM issues i
+		INNER JOIN issue_dependencies d ON i.id = d.depends_on_id
+		WHERE d.issue_id = ? AND i.repo_id = ?
+		ORDER BY i.created_at DESC
+	`)
+	err := h.SelectContext(ctx, &issues, query, issueID, repoID)
+	return issues, err
+}
+
+// GetIssueDependents implements store.IssueStore.
+func (*issueStore) GetIssueDependents(ctx context.Context, h db.Handler, repoID int64, issueID int64) ([]models.Issue, error) {
+	var issues []models.Issue
+	query := h.Rebind(`
+		SELECT i.* FROM issues i
+		INNER JOIN issue_dependencies d ON i.id = d.issue_id
+		WHERE d.depends_on_id = ? AND i.repo_id = ?
+		ORDER BY i.created_at DESC
+	`)
+	err := h.SelectContext(ctx, &issues, query, issueID, repoID)
+	return issues, err
+}
+
+// HasIssueDependency implements store.IssueStore.
+func (*issueStore) HasIssueDependency(ctx context.Context, h db.Handler, repoID int64, issueID int64, dependsOnID int64) (bool, error) {
+	// Verify the issue belongs to the repository
+	query := h.Rebind(`
+		SELECT COUNT(*) FROM issues
+		WHERE repo_id = ? AND id = ?
+	`)
+	var count int
+	if err := h.GetContext(ctx, &count, query, repoID, issueID); err != nil {
+		return false, err
+	}
+	if count == 0 {
+		return false, sql.ErrNoRows
+	}
+
+	// Check if the dependency exists
+	query = h.Rebind(`
+		SELECT COUNT(*) FROM issue_dependencies
+		WHERE issue_id = ? AND depends_on_id = ?
+	`)
+	if err := h.GetContext(ctx, &count, query, issueID, dependsOnID); err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }

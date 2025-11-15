@@ -35,12 +35,12 @@ func (d *Backend) CreateMergeRequest(ctx context.Context, repoName string, title
 	}
 
 	// Check if source branch exists
-	if _, err := gr.Reference(fmt.Sprintf("refs/heads/%s", sourceBranch)); err != nil {
+	if _, err := gr.ShowRefVerify(fmt.Sprintf("refs/heads/%s", sourceBranch)); err != nil {
 		return 0, fmt.Errorf("source branch %q does not exist", sourceBranch)
 	}
 
 	// Check if target branch exists
-	if _, err := gr.Reference(fmt.Sprintf("refs/heads/%s", targetBranch)); err != nil {
+	if _, err := gr.ShowRefVerify(fmt.Sprintf("refs/heads/%s", targetBranch)); err != nil {
 		return 0, fmt.Errorf("target branch %q does not exist", targetBranch)
 	}
 
@@ -211,21 +211,16 @@ func (d *Backend) ReopenMergeRequest(ctx context.Context, repoName string, mrID 
 
 // performMerge performs a git merge operation.
 func performMerge(repo *git.Repository, sourceBranch, targetBranch, author string) error {
-	// Perform the merge using git merge command
-	// This creates a merge commit on the target branch
-	// Note: This is a simplified implementation. In production, you might want to:
-	// - Check for conflicts before merging
-	// - Allow different merge strategies (--ff, --no-ff, --squash)
-	// - Provide more detailed error messages
-
-	// Checkout the target branch
-	if err := repo.Checkout(targetBranch, nil); err != nil {
+	// Checkout target branch
+	_, err := git.NewCommand("checkout", targetBranch).RunInDir(repo.Path)
+	if err != nil {
 		return fmt.Errorf("failed to checkout target branch: %w", err)
 	}
 
-	// Merge the source branch into the target branch
+	// Merge source branch
 	commitMsg := fmt.Sprintf("Merge branch '%s' into '%s'", sourceBranch, targetBranch)
-	if err := repo.Merge(sourceBranch, commitMsg); err != nil {
+	_, err = git.NewCommand("merge", "--no-ff", "-m", commitMsg, sourceBranch).RunInDir(repo.Path)
+	if err != nil {
 		return fmt.Errorf("failed to merge branches: %w", err)
 	}
 

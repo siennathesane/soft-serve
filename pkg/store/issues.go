@@ -25,4 +25,15 @@ type IssueStore interface {
 	ReopenIssue(ctx context.Context, h db.Handler, repoID int64, id int64) error
 	// DeleteIssue deletes an issue by its ID.
 	DeleteIssue(ctx context.Context, h db.Handler, repoID int64, id int64) error
+
+	// AddIssueDependency creates a dependency relationship where issueID depends on dependsOnID.
+	AddIssueDependency(ctx context.Context, h db.Handler, repoID int64, issueID int64, dependsOnID int64) error
+	// RemoveIssueDependency removes a dependency relationship.
+	RemoveIssueDependency(ctx context.Context, h db.Handler, repoID int64, issueID int64, dependsOnID int64) error
+	// GetIssueDependencies returns all issues that the given issue depends on.
+	GetIssueDependencies(ctx context.Context, h db.Handler, repoID int64, issueID int64) ([]models.Issue, error)
+	// GetIssueDependents returns all issues that depend on the given issue.
+	GetIssueDependents(ctx context.Context, h db.Handler, repoID int64, issueID int64) ([]models.Issue, error)
+	// HasIssueDependency checks if a dependency exists.
+	HasIssueDependency(ctx context.Context, h db.Handler, repoID int64, issueID int64, dependsOnID int64) (bool, error)
 }

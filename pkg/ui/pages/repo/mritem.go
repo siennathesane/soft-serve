@@ -3,7 +3,6 @@ package repo
 import (
 	"fmt"
 	"io"
-	"time"
 
 	"github.com/charmbracelet/bubbles/v2/key"
 	"github.com/charmbracelet/bubbles/v2/list"

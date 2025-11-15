@@ -6,7 +6,6 @@ import (
 
 	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/charmbracelet/soft-serve/pkg/db"
-	"github.com/charmbracelet/soft-serve/pkg/db/internal/test"
 	"github.com/charmbracelet/soft-serve/pkg/db/migrate"
 	"github.com/charmbracelet/soft-serve/pkg/db/models"
 	"github.com/charmbracelet/soft-serve/pkg/store/database"
@@ -18,7 +17,7 @@ func TestMergeRequestStore(t *testing.T) {
 
 	// Setup database
 	ctx := config.WithContext(context.TODO(), config.DefaultConfig())
-	dbx, err := test.OpenSqlite(ctx, t)
+	dbx, err := openTestDB(ctx, t)
 	is.NoErr(err)
 
 	// Run migrations
@@ -56,7 +55,7 @@ func TestMergeRequestStore(t *testing.T) {
 		is := is.New(t)
 
 		var mrID int64
-		err := dbx.TransactionContext(ctx, func(tx *database.Tx) error {
+		err := dbx.TransactionContext(ctx, func(tx *db.Tx) error {
 			var err error
 			mrID, err = store.CreateMergeRequest(ctx, tx, repoID, userID, "Test MR", "Test Description", "feature", "main")
 			return err
@@ -71,7 +70,7 @@ func TestMergeRequestStore(t *testing.T) {
 
 		// Create MR first
 		var mrID int64
-		err := dbx.TransactionContext(ctx, func(tx *database.Tx) error {
+		err := dbx.TransactionContext(ctx, func(tx *db.Tx) error {
 			var err error
 			mrID, err = store.CreateMergeRequest(ctx, tx, repoID, userID, "Get Test MR", "Description", "feature", "main")
 			return err
@@ -80,7 +79,7 @@ func TestMergeRequestStore(t *testing.T) {
 
 		// Get MR
 		var mr models.MergeRequest
-		err = dbx.TransactionContext(ctx, func(tx *database.Tx) error {
+		err = dbx.TransactionContext(ctx, func(tx *db.Tx) error {
 			var err error
 			mr, err = store.GetMergeRequestByID(ctx, tx, repoID, mrID)
 			return err
@@ -98,7 +97,7 @@ func TestMergeRequestStore(t *testing.T) {
 		is := is.New(t)
 
 		// Create multiple MRs
-		err := dbx.TransactionContext(ctx, func(tx *database.Tx) error {
+		err := dbx.TransactionContext(ctx, func(tx *db.Tx) error {
 			_, err := store.CreateMergeRequest(ctx, tx, repoID, userID, "MR 1", "Desc 1", "f1", "main")
 			if err != nil {
 				return err
@@ -110,7 +109,7 @@ func TestMergeRequestStore(t *testing.T) {
 
 		// Get all MRs
 		var mrs []models.MergeRequest
-		err = dbx.TransactionContext(ctx, func(tx *database.Tx) error {
+		err = dbx.TransactionContext(ctx, func(tx *db.Tx) error {
 			var err error
 			mrs, err = store.GetMergeRequestsByRepoID(ctx, tx, repoID)
 			return err
@@ -125,7 +124,7 @@ func TestMergeRequestStore(t *testing.T) {
 
 		// Create and close one MR
 		var mrID int64
-		err := dbx.TransactionContext(ctx, func(tx *database.Tx) error {
+		err := dbx.TransactionContext(ctx, func(tx *db.Tx) error {
 			var err error
 			mrID, err = store.CreateMergeRequest(ctx, tx, repoID, userID, "Closed MR", "Description", "feature", "main")
 			if err != nil {
@@ -137,7 +136,7 @@ func TestMergeRequestStore(t *testing.T) {
 
 		// Get only open MRs
 		var openMRs []models.MergeRequest
-		err = dbx.TransactionContext(ctx, func(tx *database.Tx) error {
+		err = dbx.TransactionContext(ctx, func(tx *db.Tx) error {
 			var err error
 			openMRs, err = store.GetMergeRequestsByRepoIDAndState(ctx, tx, repoID, models.MergeRequestStateOpen)
 			return err
@@ -151,7 +150,7 @@ func TestMergeRequestStore(t *testing.T) {
 
 		// Get only closed MRs
 		var closedMRs []models.MergeRequest
-		err = dbx.TransactionContext(ctx, func(tx *database.Tx) error {
+		err = dbx.TransactionContext(ctx, func(tx *db.Tx) error {
 			var err error
 			closedMRs, err = store.GetMergeRequestsByRepoIDAndState(ctx, tx, repoID, models.MergeRequestStateClosed)
 			return err
@@ -166,7 +165,7 @@ func TestMergeRequestStore(t *testing.T) {
 
 		// Create MR
 		var mrID int64
-		err := dbx.TransactionContext(ctx, func(tx *database.Tx) error {
+		err := dbx.TransactionContext(ctx, func(tx *db.Tx) error {
 			var err error
 			mrID, err = store.CreateMergeRequest(ctx, tx, repoID, userID, "Original Title", "Original Description", "feature", "main")
 			return err
@@ -174,14 +173,14 @@ func TestMergeRequestStore(t *testing.T) {
 		is.NoErr(err)
 
 		// Update MR
-		err = dbx.TransactionContext(ctx, func(tx *database.Tx) error {
+		err = dbx.TransactionContext(ctx, func(tx *db.Tx) error {
 			return store.UpdateMergeRequest(ctx, tx, repoID, mrID, "Updated Title", "Updated Description")
 		})
 		is.NoErr(err)
 
 		// Verify update
 		var mr models.MergeRequest
-		err = dbx.TransactionContext(ctx, func(tx *database.Tx) error {
+		err = dbx.TransactionContext(ctx, func(tx *db.Tx) error {
 			var err error
 			mr, err = store.GetMergeRequestByID(ctx, tx, repoID, mrID)
 			return err
@@ -197,7 +196,7 @@ func TestMergeRequestStore(t *testing.T) {
 
 		// Create MR
 		var mrID int64
-		err := dbx.TransactionContext(ctx, func(tx *database.Tx) error {
+		err := dbx.TransactionContext(ctx, func(tx *db.Tx) error {
 			var err error
 			mrID, err = store.CreateMergeRequest(ctx, tx, repoID, userID, "To Merge", "Description", "feature", "main")
 			return err
@@ -205,14 +204,14 @@ func TestMergeRequestStore(t *testing.T) {
 		is.NoErr(err)
 
 		// Merge MR
-		err = dbx.TransactionContext(ctx, func(tx *database.Tx) error {
+		err = dbx.TransactionContext(ctx, func(tx *db.Tx) error {
 			return store.MergeMergeRequest(ctx, tx, repoID, mrID, userID)
 		})
 		is.NoErr(err)
 
 		// Verify state
 		var mr models.MergeRequest
-		err = dbx.TransactionContext(ctx, func(tx *database.Tx) error {
+		err = dbx.TransactionContext(ctx, func(tx *db.Tx) error {
 			var err error
 			mr, err = store.GetMergeRequestByID(ctx, tx, repoID, mrID)
 			return err
@@ -230,7 +229,7 @@ func TestMergeRequestStore(t *testing.T) {
 
 		// Create MR
 		var mrID int64
-		err := dbx.TransactionContext(ctx, func(tx *database.Tx) error {
+		err := dbx.TransactionContext(ctx, func(tx *db.Tx) error {
 			var err error
 			mrID, err = store.CreateMergeRequest(ctx, tx, repoID, userID, "To Close", "Description", "feature", "main")
 			return err
@@ -238,14 +237,14 @@ func TestMergeRequestStore(t *testing.T) {
 		is.NoErr(err)
 
 		// Close MR
-		err = dbx.TransactionContext(ctx, func(tx *database.Tx) error {
+		err = dbx.TransactionContext(ctx, func(tx *db.Tx) error {
 			return store.CloseMergeRequest(ctx, tx, repoID, mrID, userID)
 		})
 		is.NoErr(err)
 
 		// Verify state
 		var mr models.MergeRequest
-		err = dbx.TransactionContext(ctx, func(tx *database.Tx) error {
+		err = dbx.TransactionContext(ctx, func(tx *db.Tx) error {
 			var err error
 			mr, err = store.GetMergeRequestByID(ctx, tx, repoID, mrID)
 			return err
@@ -263,7 +262,7 @@ func TestMergeRequestStore(t *testing.T) {
 
 		// Create and close MR
 		var mrID int64
-		err := dbx.TransactionContext(ctx, func(tx *database.Tx) error {
+		err := dbx.TransactionContext(ctx, func(tx *db.Tx) error {
 			var err error
 			mrID, err = store.CreateMergeRequest(ctx, tx, repoID, userID, "To Reopen", "Description", "feature", "main")
 			if err != nil {
@@ -274,14 +273,14 @@ func TestMergeRequestStore(t *testing.T) {
 		is.NoErr(err)
 
 		// Reopen MR
-		err = dbx.TransactionContext(ctx, func(tx *database.Tx) error {
+		err = dbx.TransactionContext(ctx, func(tx *db.Tx) error {
 			return store.ReopenMergeRequest(ctx, tx, repoID, mrID)
 		})
 		is.NoErr(err)
 
 		// Verify state
 		var mr models.MergeRequest
-		err = dbx.TransactionContext(ctx, func(tx *database.Tx) error {
+		err = dbx.TransactionContext(ctx, func(tx *db.Tx) error {
 			var err error
 			mr, err = store.GetMergeRequestByID(ctx, tx, repoID, mrID)
 			return err
@@ -298,7 +297,7 @@ func TestMergeRequestStore(t *testing.T) {
 
 		// Create MR
 		var mrID int64
-		err := dbx.TransactionContext(ctx, func(tx *database.Tx) error {
+		err := dbx.TransactionContext(ctx, func(tx *db.Tx) error {
 			var err error
 			mrID, err = store.CreateMergeRequest(ctx, tx, repoID, userID, "To Delete", "Description", "feature", "main")
 			return err
@@ -306,13 +305,13 @@ func TestMergeRequestStore(t *testing.T) {
 		is.NoErr(err)
 
 		// Delete MR
-		err = dbx.TransactionContext(ctx, func(tx *database.Tx) error {
+		err = dbx.TransactionContext(ctx, func(tx *db.Tx) error {
 			return store.DeleteMergeRequest(ctx, tx, repoID, mrID)
 		})
 		is.NoErr(err)
 
 		// Verify deletion (should return error)
-		err = dbx.TransactionContext(ctx, func(tx *database.Tx) error {
+		err = dbx.TransactionContext(ctx, func(tx *db.Tx) error {
 			_, err := store.GetMergeRequestByID(ctx, tx, repoID, mrID)
 			return err
 		})
